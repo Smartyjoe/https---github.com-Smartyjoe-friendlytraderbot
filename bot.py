@@ -9,11 +9,13 @@ import platform
 import http.server
 import socketserver
 import threading
+import yfinance as yf
 from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 from openai import OpenAI
 from dotenv import load_dotenv
+
 
 def run_dummy_server():
     """Starts a tiny web server to satisfy Render's port check."""
@@ -112,7 +114,41 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode='Markdown'
     )
 
+def get_real_market_data(ticker_symbol):
+    try:
+        # Fetch last 100 periods of 5-minute data
+        data = yf.download(ticker_symbol, period="1d", interval="5m", progress=False)
+        if data.empty:
+            return None
+        
+        # Format for AI Analysis
+        # We take the last few rows to show the trend
+        latest_data = data.tail(10).to_string()
+        return latest_data
+    except Exception as e:
+        print(f"Error fetching YFinance data: {e}")
+        return None
+
 async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    
+    action = query.data.replace('ignore_', '')
+
+    if action == 'market_otc':
+        await query.edit_message_text("📸 **OTC MODE**: Please upload a chart screenshot now.")
+    
+    elif action == 'market_real':
+        # Instead of the error message, ask for a ticker
+        await query.edit_message_text(
+            "📊 **REAL MARKET MODE**\n\nPlease type the **Ticker Symbol** you want to analyze.\n"
+            "Examples:\n"
+            "• `EURUSD=X` (Forex)\n"
+            "• `AAPL` (Apple Stock)\n"
+            "• `BTC-USD` (Bitcoin)"
+        )
+        # Set a temporary state so the bot knows the next text message is a ticker
+        context.user_data['expecting_ticker'] = True
     query = update.callback_query
     await query.answer()
     
@@ -139,6 +175,20 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text("📸 **OTC MODE**: Please upload a clear screenshot of your Pocket Option chart now.")
     elif action == 'market_real':
         await query.edit_message_text("📊 **REAL MARKET**: Automatic scanning is currently being integrated with Yahoo Finance API. Please use the OTC Screenshot method for now.")
+
+async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if context.user_data.get('expecting_ticker'):
+        ticker = update.message.text.upper()
+        msg = await update.message.reply_text(f"🔍 Fetching live data for {ticker}...")
+        
+        raw_data = get_real_market_data(ticker)
+        if raw_data:
+            analysis = await ai_analyze(raw_data)
+            await msg.edit_text(f"📊 **SFT REAL MARKET REPORT: {ticker}**\n\n{analysis}", parse_mode='Markdown')
+        else:
+            await msg.edit_text(f"❌ Could not find data for `{ticker}`. Please check the symbol and try again.")
+        
+        context.user_data['expecting_ticker'] = False
 
 async def process_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = await update.message.reply_text("📥 Downloading image and performing Vision Analysis...")
@@ -179,6 +229,7 @@ if __name__ == '__main__':
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(handle_choice, pattern='^(market_|ignore_|start_over)'))
     app.add_handler(MessageHandler(filters.PHOTO, process_image))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     
     print("✅ SFT Bot is running...")
     app.run_polling(drop_pending_updates=True)
