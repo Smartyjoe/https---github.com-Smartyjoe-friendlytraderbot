@@ -89,9 +89,16 @@ def calculate_signals(df):
 async def ai_analyze(data_text):
     try:
         prompt = (
-            f"Analyze these trading indicators for a binary option trade: {data_text}. "
-            "Verify the 4-indicator strategy (EMA50, RSI, BBands, ADX). "
-            "Provide exactly: \n1. Action (CALL/PUT/HOLD)\n2. Confidence (%)\n3. Brief Reason."
+            f"Act as a Senior Technical Analyst. Analyze this market data: {data_text}.\n\n"
+            "TASKS:\n"
+            "1. Identify immediate Support and Resistance levels.\n"
+            "2. Analyze price action relative to the 4-indicator strategy (EMA50, RSI, BBands, ADX).\n"
+            "3. Determine if the trend is Overextended or Healthy.\n\n"
+            "RESPONSE FORMAT:\n"
+            "🚀 **SIGNAL**: [CALL/PUT/HOLD]\n"
+            "🎯 **CONFIDENCE**: [X%]\n"
+            "📉 **LEVELS**: Support at X, Resistance at Y\n"
+            "📝 **REASON**: [Short technical explanation]"
         )
         response = ai_client.chat.completions.create(
             model="deepseek-v3.1-nex-n1",
@@ -100,7 +107,7 @@ async def ai_analyze(data_text):
         return response.choices[0].message.content
     except Exception as e:
         return f"AI Analysis Error: {str(e)}"
-
+    
 # --- 6. TELEGRAM HANDLERS ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
