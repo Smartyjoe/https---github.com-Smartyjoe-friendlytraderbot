@@ -6,11 +6,22 @@ import pandas_ta as ta
 import pytesseract
 import logging
 import platform
+import http.server
+import socketserver
+import threading
 from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 from openai import OpenAI
 from dotenv import load_dotenv
+
+def run_dummy_server():
+    """Starts a tiny web server to satisfy Render's port check."""
+    port = int(os.environ.get("PORT", 10000))
+    handler = http.server.SimpleHTTPRequestHandler
+    with socketserver.TCPServer(("", port), handler) as httpd:
+        print(f"📡 Dummy server listening on port {port}")
+        httpd.serve_forever()
 
 # --- 1. CONFIGURATION & SECURITY ---
 load_dotenv()  # Load variables from .env file for local testing
@@ -158,13 +169,16 @@ async def process_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # --- 7. MAIN EXECUTION ---
 if __name__ == '__main__':
-    # Build application
+    # 1. Start the dummy server in a separate thread so it doesn't block the bot
+    threading.Thread(target=run_dummy_server, daemon=True).start()
+
+    # 2. Build and start your Telegram bot
     app = Application.builder().token(TOKEN).build()
-    
+
     # Register Handlers
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(handle_choice, pattern='^(market_|ignore_|start_over)'))
     app.add_handler(MessageHandler(filters.PHOTO, process_image))
     
-    print("✅ Bot is running... Press Ctrl+C to stop.")
+    print("✅ SFT Bot is running...")
     app.run_polling(drop_pending_updates=True)
