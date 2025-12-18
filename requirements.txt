@@ -1,9 +1,0 @@
-yfinance
-python-telegram-bot
-pandas
-pandas_ta
-pytesseract
-opencv-python-headles
-openai
-pytz
-python-dotenv
