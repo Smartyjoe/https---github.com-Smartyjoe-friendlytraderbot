@@ -4,6 +4,9 @@ import pandas as pd
 def ema(series: pd.Series, period: int) -> pd.Series:
     return series.ewm(span=period, adjust=False).mean()
 
+def get_ema_series(series: pd.Series, period: int) -> pd.Series:
+    return series.ewm(span=period, adjust=False).mean()
+
 def ema_trend(close: pd.Series) -> dict:
     ema50 = ema(close, 50)
     ema200 = ema(close, 200)

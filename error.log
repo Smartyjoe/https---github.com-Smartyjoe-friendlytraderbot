@@ -1,0 +1,4 @@
+2025-12-24T17:50:57.558886Z  WARN SubscriptionsApiModule: Failed to forward data: Channel sender error: send to a closed channel
+2025-12-24T17:50:57.565615Z  WARN SubscriptionsApiModule: Failed to forward data: Channel sender error: send to a half closed channel
+2025-12-24T17:50:57.566500Z  WARN SubscriptionsApiModule: Failed to send termination signal: send to a half closed channel
+2025-12-24T17:50:57.567261Z  WARN ApiModule: [binary_options_tools::pocketoption::modules::subscriptions::SubscriptionsApiModule] err=ChannelSender(ReceiveClosed)
